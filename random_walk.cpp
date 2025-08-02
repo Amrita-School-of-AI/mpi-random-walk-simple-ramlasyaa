@@ -91,6 +91,7 @@ void walker_process()
     // Send the number of steps taken to the controller (rank 0)
     int completion_signal = steps;
     MPI_Send(&completion_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+}
 
 void controller_process()
 {
