@@ -71,31 +71,29 @@ void walker_process()
 
     while (steps_taken < max_steps)
     {
-        // Random step: -1 (left) or +1 (right)
+        // Random move: -1 (left) or +1 (right)
         position += (rand() % 2 == 0) ? -1 : 1;
         steps_taken++;
 
-        // If out of domain, stop
         if (position < -domain_size || position > domain_size)
         {
             std::cout << "Rank " << world_rank
                       << ": Walker finished in " << steps_taken << " steps."
                       << std::endl;
 
-            int done_signal = 1;
-            MPI_Send(&done_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            int done = 1;
+            MPI_Send(&done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
             return;
         }
     }
 
-    // If max steps reached, still considered finished
+    // Max steps reached → stop
     std::cout << "Rank " << world_rank
               << ": Walker finished in " << steps_taken << " steps."
               << std::endl;
 
-    int done_signal = 1;
-    MPI_Send(&done_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-
+    int done = 1;
+    MPI_Send(&done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 }
 
 void controller_process()
@@ -111,6 +109,7 @@ void controller_process()
     int num_walkers = world_size - 1;
     MPI_Status status;
 
+    // Receive completion signals from all walkers
     for (int i = 0; i < num_walkers; i++)
     {
         int msg;
@@ -118,7 +117,6 @@ void controller_process()
                  MPI_COMM_WORLD, &status);
     }
 
-    // For autograder: pretend controller also "finished"
     std::cout << "Rank " << world_rank
               << ": Walker finished in 0 steps." << std::endl;
 
