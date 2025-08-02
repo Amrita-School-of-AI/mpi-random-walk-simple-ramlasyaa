@@ -67,34 +67,30 @@ void walker_process()
     //    c. Break the loop.
 
     int position = 0;
-    int steps_taken = 0;
+    int steps = 0;
 
-    while (steps_taken < max_steps)
+    // Loop for a maximum of max_steps
+    for (steps = 0; steps < max_steps; steps++)
     {
-        // Random move: -1 (left) or +1 (right)
-        position += (rand() % 2 == 0) ? -1 : 1;
-        steps_taken++;
+        // Randomly move left (-1) or right (+1)
+        int direction = (rand() % 2 == 0) ? -1 : 1;
+        position += direction;
 
+        // Check if the walker has moved outside the domain [-domain_size, +domain_size]
         if (position < -domain_size || position > domain_size)
         {
-            std::cout << "Rank " << world_rank
-                      << ": Walker finished in " << steps_taken << " steps."
-                      << std::endl;
-
-            int done = 1;
-            MPI_Send(&done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-            return;
+            steps++; // Count this step before breaking
+            break;   // Walk is finished - out of bounds
         }
     }
 
-    // Max steps reached → stop
+    // Print a message including the keyword "finished"
     std::cout << "Rank " << world_rank
-              << ": Walker finished in " << steps_taken << " steps."
-              << std::endl;
+              << ": Walker finished in " << steps << " steps." << std::endl;
 
-    int done = 1;
-    MPI_Send(&done, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-}
+    // Send the number of steps taken to the controller (rank 0)
+    int completion_signal = steps;
+    MPI_Send(&completion_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
 void controller_process()
 {
@@ -107,20 +103,16 @@ void controller_process()
     //    For example: "Controller: All X walkers have finished."
 
     int num_walkers = world_size - 1;
-    MPI_Status status;
 
-    // Receive completion signals from all walkers
+    // Receive completion messages from each walker
     for (int i = 0; i < num_walkers; i++)
     {
-        int msg;
-        MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG,
+        int received_steps;
+        MPI_Status status;
+        MPI_Recv(&received_steps, 1, MPI_INT, MPI_ANY_SOURCE, 0,
                  MPI_COMM_WORLD, &status);
     }
-
-    std::cout << "Rank " << world_rank
-              << ": Walker finished in 0 steps." << std::endl;
-
     std::cout << "Controller: All " << num_walkers
-              << " walkers are finished." << std::endl;
+              << " walkers have finished." << std::endl;
     
 }
