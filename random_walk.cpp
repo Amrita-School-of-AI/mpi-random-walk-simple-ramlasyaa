@@ -67,32 +67,34 @@ void walker_process()
     //    c. Break the loop.
 
     int position = 0;
-    int steps = 0;
+    int steps_taken = 0;
 
-    while(steps < maxsteps){
-        // Randomly moving it to left (-1) or right (+1)
-        int move = (rand() % 2==0) ? -1:1 ;
-        position += move;
-        steps++;
+    while (steps_taken < max_steps)
+    {
+        // Random step: -1 (left) or +1 (right)
+        position += (rand() % 2 == 0) ? -1 : 1;
+        steps_taken++;
 
-        // check if walker has left the domain
+        // If out of domain, stop
         if (position < -domain_size || position > domain_size)
         {
             std::cout << "Rank " << world_rank
-                      << ": Walker finished in " << steps << " steps."
+                      << ": Walker finished in " << steps_taken << " steps."
                       << std::endl;
 
-            int signal = 1;
-            MPI_Send(&signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
-            return; 
+            int done_signal = 1;
+            MPI_Send(&done_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            return;
         }
+    }
 
-        // Max steps reached without leaving domain
+    // If max steps reached, still considered finished
     std::cout << "Rank " << world_rank
-              << ": Walker finished in " << steps << " steps."
+              << ": Walker finished in " << steps_taken << " steps."
               << std::endl;
-    int signal = 1;
-    MPI_Send(&signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+
+    int done_signal = 1;
+    MPI_Send(&done_signal, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 
 }
 
@@ -106,6 +108,19 @@ void controller_process()
     // 4. After receiving messages from all walkers, print a final summary message.
     //    For example: "Controller: All X walkers have finished."
 
-    
+    int num_walkers = world_size - 1;
+    MPI_Status status;
+
+    // Wait for all walkers
+    for (int i = 0; i < num_walkers; i++)
+    {
+        int msg;
+        MPI_Recv(&msg, 1, MPI_INT, MPI_ANY_SOURCE, MPI_ANY_TAG,
+                 MPI_COMM_WORLD, &status);
+    }
+
+    // Match your requested final output exactly
+    std::cout << "Controller: All " << num_walkers
+              << " walkers are finished." << std::endl;
     
 }
